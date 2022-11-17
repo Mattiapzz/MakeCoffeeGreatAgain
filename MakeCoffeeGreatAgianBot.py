@@ -11,6 +11,7 @@ import pickle
 
 import telebot
 
+
 # All the global variables
 LOG          = True
 TOKEN        = None                  # unique bot ID
@@ -25,8 +26,6 @@ admin_list   = dict()                # dict with superusers
 coffee_count = dict()                # dict with the users and their scores
 residuals    = dict()
 warehouse    = dict()
-avrg_price   = 0
-cialde_num   = 0
 coffee_emoji = "\U00002615"
 
 # Trick to share bot as global variable
@@ -73,9 +72,7 @@ def add_coffee(message):
 	else:
 		coffee_count[user] = 1
 	bot.reply_to(message, coffee_emoji + "Coffee added for " + name + " User: " + user)
-	if "cialde_num" in residuals.keys():
-		cialde_num = cialde_num-1
-		residuals["cialde_num"] = cialde_num
+	residuals["cialde_num"] = residuals["cialde_num"] - 1
 	# save the dict
 	with open( LNAME, 'wb' ) as f:
 		pickle.dump( coffee_count, f, protocol=pickle.HIGHEST_PROTOCOL )
@@ -110,12 +107,13 @@ def print_global_stats(message):
 	""" -------------------------------------------------------------------------------------------------------------
 	Print stats global
 	------------------------------------------------------------------------------------------------------------- """
-	global cialde_num
 	user = message.from_user.username
 	txt = coffee_emoji + "Total consumption of coffee:\n\n"
 	if user in admin_list.keys():
 		for user_i in coffee_count.keys():
+			avrg_price = residuals["avrg_price"]
 			txt += f"{ user_i }. N.  { coffee_count[user_i] }   ({avrg_price*coffee_count[user_i]} EURO ) \n"
+		cialde_num = residuals["cialde_num"]
 		txt += f"\nResidual cialde:  { cialde_num }. \n"
 	bot.reply_to(message, txt)
 
@@ -136,36 +134,42 @@ def set_avg_price(message):
 	""" -------------------------------------------------------------------------------------------------------------
 	Set average price of coffee
 	------------------------------------------------------------------------------------------------------------- """
-	global avrg_price
 	user = message.from_user.username
 	if user in admin_list.keys():
 		args = extract_arg(message.text)
-		avrg_price = float(args[0])
-		residuals["avrg_price"] = avrg_price
+		residuals["avrg_price"] = float(args[0])
 		# save the dict
 		with open( RNAME, 'wb' ) as f:
 			pickle.dump( residuals, f, protocol=pickle.HIGHEST_PROTOCOL )
 		bot.reply_to(message, "Changed average price of coffee")
 
 @bot.message_handler(commands=['fill'])
-def set_cialde_num(message):
+def add_cialde_num(message):
 	""" -------------------------------------------------------------------------------------------------------------
-	Set number of cialde
+	Add number of cialde
 	------------------------------------------------------------------------------------------------------------- """
-	global cialde_num
 	user = message.from_user.username
 	if user in admin_list.keys():
 		args = extract_arg(message.text)
-		cialde_num = float(args[0])
-		if "cialde_num" in residuals.keys():
-			residuals["cialde_num"] += cialde_num
-		else:
-			residuals["cialde_num"] = cialde_num
+		residuals["cialde_num"] += float(args[0])
 		# save the dict
 		with open( RNAME, 'wb' ) as f:
 			pickle.dump( residuals, f, protocol=pickle.HIGHEST_PROTOCOL )
 		bot.reply_to(message, "Changed number of cialde")
 
+@bot.message_handler(commands=['overridecialde'])
+def set_cialde_num(message):
+	""" -------------------------------------------------------------------------------------------------------------
+	Set number of cialde
+	------------------------------------------------------------------------------------------------------------- """
+	user = message.from_user.username
+	if user in admin_list.keys():
+		args = extract_arg(message.text)
+		residuals["cialde_num"] = float(args[0])
+		# save the dict
+		with open( RNAME, 'wb' ) as f:
+			pickle.dump( residuals, f, protocol=pickle.HIGHEST_PROTOCOL )
+		bot.reply_to(message, "Changed number of cialde")
 
 
 @bot.message_handler(commands=['sudo'])
@@ -204,7 +208,48 @@ def extract_arg(arg):
 	------------------------------------------------------------------------------------------------------------- """
 	return arg.split()[1:]
 
+# 	bot$sendMessage(
+#   chat_id,
+#   "Okay, thanks!",
+#   reply_markup = ReplyKeyboardRemove()
+# )
 
+def gen_markup():
+	""" -------------------------------------------------------------------------------------------------------------
+	gen markup
+	------------------------------------------------------------------------------------------------------------- """
+	# buttons 
+	# button_coffee = telebot.types.KeyboardButton('Coffee'+coffee_emoji, callback_data='cb_coffee')
+	# button_stats = telebot.types.KeyboardButton('Stats', callback_data='cb_stats')
+	button_coffee = telebot.types.KeyboardButton('/coffee ' + coffee_emoji, callback_data='cb_coffee')
+	button_stats = telebot.types.KeyboardButton('/stats', callback_data='cb_stats')
+	### markup = telebot.types.InlineKeyboardMarkup()
+	markup = telebot.types.ReplyKeyboardMarkup()
+	markup.add(button_coffee)
+	markup.add(button_stats)
+	#bot.send_message(chat_id, text='Keyboard example', reply_markup=keyboard)
+	return markup
+
+# @bot.message_handler(func=lambda message: True)
+# def message_handler(message):
+#     bot.send_message(message.chat.id, message.text + "  ???", reply_markup=gen_markup())
+
+
+@bot.message_handler(commands=['key'])
+def addkey(message):
+    bot.send_message(message.chat.id, message.text + "  Get keyboard", reply_markup=gen_markup())
+
+@bot.message_handler(commands=['nokey'])
+def rem_key(message):
+    bot.send_message(message.chat.id, message.text + "  Remove keyboard", reply_markup = telebot.types.ReplyKeyboardRemove())
+
+# @bot.callback_query_handler(func=lambda call: True)
+# def callback_query(call):
+# 	cqd = call.data
+# 	print(cqd)
+# 	if cqd == 'cb_coffee':
+# 		print("Enter in add coffe by button")
+# 		add_coffee(call.message)
 
 # ===================================================================================================================
 #
@@ -217,8 +262,6 @@ def main():
 	global admin_list
 	global warehouse
 	global residuals
-	global avrg_price
-	global cialde_num
 
 	if LOG:
 		with open( ONAME, 'a' ) as olog:
@@ -243,8 +286,20 @@ def main():
 	if os.path.isfile( RNAME ):
 		with open( RNAME, "rb" ) as f:
 			residuals = pickle.load( f )
-			avrg_price = residuals["avrg_price"]
-			# cialde_num = residuals["cialde_num"]
+			if "avrg_price" not in residuals.keys():
+				residuals["avrg_price"] = 0
+			if "cialde_num" not in residuals.keys():
+				residuals["cialde_num"] = 0
+			with open( RNAME, 'wb' ) as f:
+				pickle.dump( residuals, f, protocol=pickle.HIGHEST_PROTOCOL )
+	else:
+		residuals["avrg_price"] = 0
+		residuals["cialde_num"] = 0
+		# save the dict
+		with open( RNAME, 'wb' ) as f:
+			pickle.dump( residuals, f, protocol=pickle.HIGHEST_PROTOCOL )
+
+	
 
 	bot.infinity_polling()
 
