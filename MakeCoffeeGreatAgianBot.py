@@ -112,7 +112,7 @@ def print_global_stats(message):
 	if user in admin_list.keys():
 		for user_i in coffee_count.keys():
 			avrg_price = residuals["avrg_price"]
-			txt += f"{ user_i }. N.  { coffee_count[user_i] }   ({avrg_price*coffee_count[user_i]} EURO ) \n"
+			txt += f"{ user_i }. N.  { coffee_count[user_i] }   ({avrg_price*coffee_count[user_i]:2.2f} EURO ) \n"
 		cialde_num = residuals["cialde_num"]
 		txt += f"\nResidual cialde:  { cialde_num }. \n"
 	bot.reply_to(message, txt)
@@ -151,7 +151,7 @@ def add_cialde_num(message):
 	user = message.from_user.username
 	if user in admin_list.keys():
 		args = extract_arg(message.text)
-		residuals["cialde_num"] += float(args[0])
+		residuals["cialde_num"] += int(args[0])
 		# save the dict
 		with open( RNAME, 'wb' ) as f:
 			pickle.dump( residuals, f, protocol=pickle.HIGHEST_PROTOCOL )
@@ -165,7 +165,7 @@ def set_cialde_num(message):
 	user = message.from_user.username
 	if user in admin_list.keys():
 		args = extract_arg(message.text)
-		residuals["cialde_num"] = float(args[0])
+		residuals["cialde_num"] = int(args[0])
 		# save the dict
 		with open( RNAME, 'wb' ) as f:
 			pickle.dump( residuals, f, protocol=pickle.HIGHEST_PROTOCOL )
@@ -195,53 +195,37 @@ def add_sudo(message):
 	with open( ANAME, 'wb' ) as f:
 		pickle.dump( admin_list, f, protocol=pickle.HIGHEST_PROTOCOL )
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-	""" -------------------------------------------------------------------------------------------------------------
-	Echo all messages not supported
-	------------------------------------------------------------------------------------------------------------- """
-	bot.reply_to(message, message.text)
-
 def extract_arg(arg):
 	""" -------------------------------------------------------------------------------------------------------------
 	Split arguments of message
 	------------------------------------------------------------------------------------------------------------- """
 	return arg.split()[1:]
 
-# 	bot$sendMessage(
-#   chat_id,
-#   "Okay, thanks!",
-#   reply_markup = ReplyKeyboardRemove()
-# )
 
 def gen_markup():
 	""" -------------------------------------------------------------------------------------------------------------
 	gen markup
 	------------------------------------------------------------------------------------------------------------- """
 	# buttons 
-	# button_coffee = telebot.types.KeyboardButton('Coffee'+coffee_emoji, callback_data='cb_coffee')
-	# button_stats = telebot.types.KeyboardButton('Stats', callback_data='cb_stats')
-	button_coffee = telebot.types.KeyboardButton('/coffee ' + coffee_emoji, callback_data='cb_coffee')
-	button_stats = telebot.types.KeyboardButton('/stats', callback_data='cb_stats')
-	### markup = telebot.types.InlineKeyboardMarkup()
-	markup = telebot.types.ReplyKeyboardMarkup()
+	button_coffee = telebot.types.KeyboardButton('/coffee ' + coffee_emoji)
+	button_stats = telebot.types.KeyboardButton('/stats')
+	markup = telebot.types.ReplyKeyboardMarkup(one_time_keyboard=True)
 	markup.add(button_coffee)
 	markup.add(button_stats)
-	#bot.send_message(chat_id, text='Keyboard example', reply_markup=keyboard)
 	return markup
-
-# @bot.message_handler(func=lambda message: True)
-# def message_handler(message):
-#     bot.send_message(message.chat.id, message.text + "  ???", reply_markup=gen_markup())
 
 
 @bot.message_handler(commands=['key'])
 def addkey(message):
-    bot.send_message(message.chat.id, message.text + "  Get keyboard", reply_markup=gen_markup())
+	bot.send_message(message.chat.id, message.text + "  Get keyboard", reply_markup=gen_markup())
 
 @bot.message_handler(commands=['nokey'])
 def rem_key(message):
     bot.send_message(message.chat.id, message.text + "  Remove keyboard", reply_markup = telebot.types.ReplyKeyboardRemove())
+
+# @bot.message_handler(func=lambda message: True)
+# def message_handler(message):
+#     bot.send_message(message.chat.id, message.text + "  ???", reply_markup=gen_markup())
 
 # @bot.callback_query_handler(func=lambda call: True)
 # def callback_query(call):
@@ -250,6 +234,14 @@ def rem_key(message):
 # 	if cqd == 'cb_coffee':
 # 		print("Enter in add coffe by button")
 # 		add_coffee(call.message)
+
+
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+	""" -------------------------------------------------------------------------------------------------------------
+	Echo all messages not supported
+	------------------------------------------------------------------------------------------------------------- """
+	bot.reply_to(message, message.text)
 
 # ===================================================================================================================
 #
